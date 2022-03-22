@@ -57,7 +57,17 @@ ETHERSCAN_KEY="YOUR ETHERSCAN API KEY HERE"
 With the environment file set up, you can move on to using Docker:
 
 ```bash
-export USERID=$UID && docker-compose build && docker-compose run contracts-env bash
+1st terminal
+export USERID=1000 && docker-compose build && docker-compose run contracts-env bash
+run npx hardhat node --hostname 127.0.0.1 
+
+2nd terminal
+
+docker exec -it <id> bash // In your case <id>  is 6b092d7c1e33  so you run:
+docker ps | grep contracts 
+//result CONTAINER_ID  IMAGE  COMMAND  CREATED  STATUS  PORTS  NAMES
+
+npm run full-deploy-local
 ```
 
 or nvm use - nvm install 16.14.2 - npm install 
