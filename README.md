@@ -60,6 +60,8 @@ With the environment file set up, you can move on to using Docker:
 export USERID=$UID && docker-compose build && docker-compose run contracts-env bash
 ```
 
+or nvm use - nvm install 16.14.2 - npm install 
+
 From there, have fun!
 
 Here are a few self-explanatory scripts:
