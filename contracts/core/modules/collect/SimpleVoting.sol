@@ -2,58 +2,27 @@
 
 pragma solidity 0.8.10;
 
+import {ISimpleVoting} from '../../../interfaces/ISimpleVoting.sol';
 import {ICollectModule} from '../../../interfaces/ICollectModule.sol';
 import {ILensHub} from '../../../interfaces/ILensHub.sol';
-import {Errors} from '../../../libraries/Errors.sol';
 import {ModuleBase} from '../ModuleBase.sol';
+import {Errors} from '../../../libraries/Errors.sol';
 import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import {SafeERC20} from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import {IERC721} from '@openzeppelin/contracts/token/ERC721/IERC721.sol';
 
-contract SimpleVoting is ICollectModule, ModuleBase {
+contract SimpleVoting is ICollectModule, ModuleBase, ISimpleVoting {
     using SafeERC20 for IERC20;
-    constructor(address hub) ModuleBase(hub) {}
-    enum HackState {
-        SubmissionsActive,
-        VotingActive,
-        VotingClosed
-    }
-    enum VoterType {
-        Judge,
-        Hacker
-    }
-    struct Voter {
-        uint voterType;
-        uint idVotedFor;
-        bool canVote;
-        bool hasVoted;
-    }
-    struct Submission {
-        uint voteCount;
-        string contentURI;
-        bool hasSubmitted;
-        uint256[] teamMembers;
-        mapping(uint256 => bool) teamMemberCollectedPrize;
-    }
-    struct Bounty {
-        uint judgesDistribution;
-        uint prizeMoney;
-        uint PrizeMoneyCollected;
-        address token;
-        mapping(uint256 => Submission) pubIdToSubmission;
-        mapping(uint256 => Voter) idToVoters;
-        uint256[] submissions;
-        uint256[] voters;
-    }
-    mapping(uint256 => Bounty) idToBounty;
-    mapping(uint256 => bool) isHacker;
-
     uint startTime;
     uint submissionsEnd;
     uint votingEnd;
     uint maxTeamSize;
     uint profileId;
     uint pubId;
+    mapping(uint256 => Bounty) idToBounty;
+    mapping(uint256 => bool) isHacker;
+
+    constructor(address hub) ModuleBase(hub) {}
 
     /**
      * @notice Initializes data for a given publication being published. This can only be called by the hub.
@@ -114,11 +83,6 @@ contract SimpleVoting is ICollectModule, ModuleBase {
             _fundBounty(_bountyIds[i], _amounts[i], _tokens[i]);
         }
     }
-
-    error NotAcceptingSubmissions();
-    error NotHacker();
-    error TeamTooLarge();
-    error ProjectAlreadySubmitted();
     function submitProject(
         uint256 submitterId,
         uint256 bountyId,
@@ -141,10 +105,6 @@ contract SimpleVoting is ICollectModule, ModuleBase {
 
         idToBounty[bountyId].submissions.push(pubId);
     }
-
-    error VotingInactive();
-    error AlreadyVoted();
-    error NotVoter();
 
     function castVote(
         uint256 bountyId,
@@ -170,8 +130,6 @@ contract SimpleVoting is ICollectModule, ModuleBase {
         idToBounty[bountyId].pubIdToSubmission[pubIdToVoteFor].voteCount += getVoterWeight(voterId, bountyId);
     }
     
-    error VoteStillActive();
-    error AlreadyCollected();
     function claimPrize(
         uint bountyId,
         uint claimProfileId
@@ -248,7 +206,6 @@ contract SimpleVoting is ICollectModule, ModuleBase {
             isHacker[_hackers[i]] = true;
         }
     }
-    error JudgeAlreadyCreated();
     function _initJudges(uint bountyId, uint[] memory judges) internal {
         for(uint i = 0; i<judges.length; i++){
             // Do NOT Reinit Judge 
@@ -258,7 +215,6 @@ contract SimpleVoting is ICollectModule, ModuleBase {
         }
     }
 
-    error BountyAlreadyCreated();
     function _fundBounty(uint bountyId, uint amount, address token) internal {
         if(idToBounty[bountyId].prizeMoney > 0) revert BountyAlreadyCreated();
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
