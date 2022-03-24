@@ -10,17 +10,18 @@ import {Errors} from '../../../libraries/Errors.sol';
 import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import {SafeERC20} from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import {IERC721} from '@openzeppelin/contracts/token/ERC721/IERC721.sol';
+import "hardhat/console.sol";
 
 contract SimpleVoting is ICollectModule, ModuleBase, ISimpleVoting {
     using SafeERC20 for IERC20;
-    uint startTime;
-    uint submissionsEnd;
-    uint votingEnd;
-    uint maxTeamSize;
-    uint profileId;
-    uint pubId;
-    mapping(uint256 => Bounty) idToBounty;
-    mapping(uint256 => bool) isHacker;
+    uint public startTime;
+    uint public submissionsEnd;
+    uint public votingEnd;
+    uint public maxTeamSize;
+    uint public profileId;
+    uint public pubId;
+    mapping(uint256 => Bounty) public idToBounty;
+    mapping(uint256 => bool) public isHacker;
 
     constructor(address hub) ModuleBase(hub) {}
 
@@ -42,7 +43,6 @@ contract SimpleVoting is ICollectModule, ModuleBase, ISimpleVoting {
         profileId = _profileId;
         pubId = _pubId;
         (
-            uint256 _startTime,
             uint256 _submissionsEnd,
             uint256 _votingEnd,
             uint256 _maxTeamSize,
@@ -52,15 +52,8 @@ contract SimpleVoting is ICollectModule, ModuleBase, ISimpleVoting {
             uint256[][] memory _judges,
             uint256[] memory _amounts,
             address[] memory _tokens
-        ) = abi.decode(_data, (uint256, uint256, uint256, uint256, uint256[], uint256[], uint256[], uint256[][], uint256[], address[]));
+        ) = abi.decode(_data, (uint256, uint256, uint256, uint256[], uint256[], uint256[], uint256[][], uint256[], address[]));
         // SafeGuard Params
-        if(
-            _submissionsEnd == 0 || 
-            _votingEnd == 0 || 
-            _maxTeamSize == 0 ||
-            _hackers.length == 0 || 
-            _bountyIds.length == 0
-        ) revert Errors.InitParamsInvalid();
         if(
             _bountyIds.length != _judgesDistribution.length || 
             _judgesDistribution.length != _judges.length || 
@@ -80,8 +73,9 @@ contract SimpleVoting is ICollectModule, ModuleBase, ISimpleVoting {
         for(uint i = 0; i< _bountyIds.length; i++){
             idToBounty[_bountyIds[i]].judgesDistribution = _judgesDistribution[i];
             _initJudges(_bountyIds[i], _judges[i]);
-            _fundBounty(_bountyIds[i], _amounts[i], _tokens[i]);
+            _fundBounty(_profileId, _bountyIds[i], _amounts[i], _tokens[i]);
         }
+        return _data;
     }
     function submitProject(
         uint256 submitterId,
@@ -101,8 +95,8 @@ contract SimpleVoting is ICollectModule, ModuleBase, ISimpleVoting {
         idToBounty[bountyId].pubIdToSubmission[pubId].hasSubmitted = true; 
         idToBounty[bountyId].pubIdToSubmission[pubId].contentURI = ILensHub(HUB).getContentURI(submitterId, pubId);      
         _assignTeamMembers(bountyId, pubId, teamMembersId);
+        
         // Submit Project
-
         idToBounty[bountyId].submissions.push(pubId);
     }
 
@@ -142,16 +136,19 @@ contract SimpleVoting is ICollectModule, ModuleBase, ISimpleVoting {
         for(uint i; i < winningProfiles.length; i++) {
             if(winningProfiles[i] == claimProfileId) {
                 // Protect from Retentrency
-                if(idToBounty[bountyId].pubIdToSubmission[winningPubId].teamMemberCollectedPrize[claimProfileId] =! false) revert AlreadyCollected();
+                if(idToBounty[bountyId].pubIdToSubmission[winningPubId].teamMemberCollectedPrize[claimProfileId] != false) revert AlreadyCollected();
                 idToBounty[bountyId].pubIdToSubmission[winningPubId].teamMemberCollectedPrize[claimProfileId] = true;
                 uint256 earnings = calculateWinnings(bountyId, winningProfiles.length);
-                idToBounty[bountyId].PrizeMoneyCollected += earnings;
-                uint256  prizeMoneyRemaining = idToBounty[bountyId].prizeMoney - idToBounty[bountyId].PrizeMoneyCollected;
+                uint256 prizeMoneyCollected = idToBounty[bountyId].PrizeMoneyCollected;
+                uint256  prizeMoneyRemaining = idToBounty[bountyId].prizeMoney - prizeMoneyCollected;
                 if(earnings <= prizeMoneyRemaining) {
+                    idToBounty[bountyId].PrizeMoneyCollected += earnings;
                     IERC20(idToBounty[bountyId].token).safeTransfer(msg.sender, earnings);
                 } else {
+                    idToBounty[bountyId].PrizeMoneyCollected += prizeMoneyRemaining;
                     IERC20(idToBounty[bountyId].token).safeTransfer(msg.sender, prizeMoneyRemaining);
                 }
+                break;
             }
         }
     }
@@ -215,16 +212,16 @@ contract SimpleVoting is ICollectModule, ModuleBase, ISimpleVoting {
         }
     }
 
-    function _fundBounty(uint bountyId, uint amount, address token) internal {
+    function _fundBounty(uint profileId, uint bountyId, uint amount, address token) internal {
         if(idToBounty[bountyId].prizeMoney > 0) revert BountyAlreadyCreated();
-        IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
+        IERC20(token).safeTransferFrom(IERC721(HUB).ownerOf(profileId), address(this), amount);
         idToBounty[bountyId].prizeMoney =  amount;
         idToBounty[bountyId].token = token;
     } 
 
     function _assignTeamMembers(uint bountyId, uint pubId, uint[] calldata teamMembersId) internal {
         for (uint i; i < teamMembersId.length; i++) {
-            if(!isHacker[teamMembersId[i]]) revert NotHacker();
+            if(isHacker[teamMembersId[i]] != true) revert NotHacker();
             idToBounty[bountyId].pubIdToSubmission[pubId].teamMembers.push(teamMembersId[i]);
         }
     }
