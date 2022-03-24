@@ -55,6 +55,13 @@ contract SimpleVoting is ICollectModule, ModuleBase, ISimpleVoting {
         ) = abi.decode(_data, (uint256, uint256, uint256, uint256[], uint256[], uint256[], uint256[][], uint256[], address[]));
         // SafeGuard Params
         if(
+            _submissionsEnd == 0 || 
+            _votingEnd == 0 || 
+            _maxTeamSize == 0 ||
+            _hackers.length == 0 || 
+            _bountyIds.length == 0
+        ) revert Errors.InitParamsInvalid();
+        if(
             _bountyIds.length != _judgesDistribution.length || 
             _judgesDistribution.length != _judges.length || 
             _judges.length != _amounts.length || 
