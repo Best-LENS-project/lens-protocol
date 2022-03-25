@@ -15,6 +15,8 @@ import {
   EmptyCollectModule__factory,
   Events,
   Events__factory,
+  SimpleVoting,
+  SimpleVoting__factory,
   FeeCollectModule,
   FeeCollectModule__factory,
   FeeFollowModule,
@@ -104,6 +106,7 @@ export let peripheryDataProvider: LensPeripheryDataProvider;
 /* Modules */
 
 // Collect
+export let simpleVoting: SimpleVoting;
 export let feeCollectModule: FeeCollectModule;
 export let timedFeeCollectModule: TimedFeeCollectModule;
 export let emptyCollectModule: EmptyCollectModule;
@@ -208,6 +211,9 @@ before(async function () {
   // Modules
   emptyCollectModule = await new EmptyCollectModule__factory(deployer).deploy(lensHub.address);
   revertCollectModule = await new RevertCollectModule__factory(deployer).deploy();
+  simpleVoting = await new SimpleVoting__factory(deployer).deploy(
+    lensHub.address,
+  );
   feeCollectModule = await new FeeCollectModule__factory(deployer).deploy(
     lensHub.address,
     moduleGlobals.address
