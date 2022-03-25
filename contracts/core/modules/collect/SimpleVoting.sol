@@ -105,6 +105,7 @@ contract SimpleVoting is ICollectModule, ModuleBase, ISimpleVoting {
         if (referrerProfileId != profileId) revert NoMirrors();
         (uint256 collectorProfile, uint256 bountyId,uint256 pubIdData,uint256[] memory teamMembersId) = abi.decode(data, (uint256, uint256, uint256, uint256[]));
         _submitProject(collector, collectorProfile, bountyId, pubIdData, teamMembersId);
+        emit ProjectSubmitted(bountyId, collectorProfile, pubIdData, collector);
     }
 
     function castVote(
@@ -129,6 +130,7 @@ contract SimpleVoting is ICollectModule, ModuleBase, ISimpleVoting {
         }
 
         idToBounty[bountyId].pubIdToSubmission[pubIdToVoteFor].voteCount += getVoterWeight(voterId, bountyId);
+        emit Voted(bountyId, voterId, pubIdToVoteFor, msg.sender);
     }
     
     function claimPrize(
@@ -158,6 +160,7 @@ contract SimpleVoting is ICollectModule, ModuleBase, ISimpleVoting {
                 break;
             }
         }
+        emit PrizeClaimed(bountyId, claimProfileId, msg.sender);
     }
     
     function state() public view returns(HackState) {

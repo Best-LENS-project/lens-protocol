@@ -15,6 +15,9 @@ interface ISimpleVoting {
     error JudgeAlreadyCreated();
     error BountyAlreadyCreated();
     error NoMirrors();
+    event Voted(uint bountyId, uint256 profileId, uint votedFor, address voter);
+    event ProjectSubmitted(uint bountyId, uint profileId, uint pubId, address submitter);
+    event PrizeClaimed(uint bountyId, uint profileId, address claimer);
     enum HackState {
         SubmissionsActive,
         VotingActive,
