@@ -8,6 +8,7 @@ import {
   CollectNFT__factory,
   Currency__factory,
   EmptyCollectModule__factory,
+  SimpleVoting__factory,
   FeeCollectModule__factory,
   FeeFollowModule__factory,
   FollowerOnlyReferenceModule__factory,
@@ -132,6 +133,13 @@ task('full-deploy', 'deploys the entire Lens Protocol').setAction(async ({}, hre
   );
 
   // Deploy collect modules
+  console.log('\n\t-- Deploying SimpleVoting --');
+  const simpleVoting = await deployContract(
+    new SimpleVoting__factory(deployer).deploy(lensHub.address, {
+      nonce: deployerNonce++,
+    })
+  );
+
   console.log('\n\t-- Deploying feeCollectModule --');
   const feeCollectModule = await deployContract(
     new FeeCollectModule__factory(deployer).deploy(lensHub.address, moduleGlobals.address, {
@@ -191,6 +199,9 @@ task('full-deploy', 'deploys the entire Lens Protocol').setAction(async ({}, hre
   // Whitelist the collect modules
   console.log('\n\t-- Whitelisting Collect Modules --');
   let governanceNonce = await ethers.provider.getTransactionCount(governance.address);
+  await waitForTx(
+    lensHub.whitelistCollectModule(simpleVoting.address, true, { nonce: governanceNonce++ })
+  );
   await waitForTx(
     lensHub.whitelistCollectModule(feeCollectModule.address, true, { nonce: governanceNonce++ })
   );
@@ -253,6 +264,7 @@ task('full-deploy', 'deploys the entire Lens Protocol').setAction(async ({}, hre
     'periphery data provider': peripheryDataProvider.address,
     'module globals': moduleGlobals.address,
     'fee collect module': feeCollectModule.address,
+    'simpleVoting': simpleVoting.address,
     'limited fee collect module': limitedFeeCollectModule.address,
     'timed fee collect module': timedFeeCollectModule.address,
     'limited timed fee collect module': limitedTimedFeeCollectModule.address,
