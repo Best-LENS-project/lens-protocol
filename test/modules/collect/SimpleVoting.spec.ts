@@ -158,6 +158,15 @@ makeSuiteCleanRoom('Simple Voting Module', function () {
                 ],
                 [2648152830, 2648160030, 5, [secondProfileId], [Mock_Bounty], [50], [[FIRST_PROFILE_ID]], [100], [currency.address]]
             );
+            const data = abiCoder.encode(
+                [
+                    'uint256',
+                    'uint256',
+                    'uint256',
+                    'uint256[]',
+                ],
+                [secondProfileId, Mock_Bounty, Mock_Submission, [secondProfileId]]
+            );
             await expect(
                 lensHub.post({
                     profileId: FIRST_PROFILE_ID,
@@ -168,7 +177,6 @@ makeSuiteCleanRoom('Simple Voting Module', function () {
                     referenceModuleData: [],
                 })
             ).to.not.be.reverted;
-
             await expect(
                 lensHub.connect(userTwo).post({
                     profileId: secondProfileId,
@@ -179,10 +187,11 @@ makeSuiteCleanRoom('Simple Voting Module', function () {
                     referenceModuleData: [],
                 })
             ).to.not.be.reverted;
-
+            
             await expect(await simpleVoting.state()).to.eq(0);
+            
             await expect(
-                simpleVoting.connect(userTwo).submitProject(secondProfileId, Mock_Bounty, Mock_Submission, [secondProfileId])
+                lensHub.connect(userTwo).collect(FIRST_PROFILE_ID, 1, data)
             ).to.not.be.reverted;
         });
 
@@ -201,6 +210,15 @@ makeSuiteCleanRoom('Simple Voting Module', function () {
                     'address[]'
                 ],
                 [2648152830, 2648160030, 5, [secondProfileId], [Mock_Bounty], [50], [[FIRST_PROFILE_ID]], [100], [currency.address]]
+            );
+            const data = abiCoder.encode(
+                [
+                    'uint256',
+                    'uint256',
+                    'uint256',
+                    'uint256[]',
+                ],
+                [secondProfileId, Mock_Bounty, Mock_Submission, [secondProfileId]]
             );
             await expect(
                 lensHub.post({
@@ -225,7 +243,7 @@ makeSuiteCleanRoom('Simple Voting Module', function () {
             ).to.not.be.reverted;
 
             await expect(
-                simpleVoting.connect(userTwo).submitProject(secondProfileId, Mock_Bounty, Mock_Submission, [secondProfileId])
+                lensHub.connect(userTwo).collect(FIRST_PROFILE_ID, 1, data)
             ).to.not.be.reverted;
             await expect(await simpleVoting.state()).to.eq(0);
             await network.provider.send("evm_setNextBlockTimestamp", [2648152830]);
@@ -256,6 +274,15 @@ makeSuiteCleanRoom('Simple Voting Module', function () {
                 ],
                 [2648152830, 2648160030, 5, [secondProfileId], [Mock_Bounty], [50], [[FIRST_PROFILE_ID]], [100], [currency.address]]
             );
+            const data = abiCoder.encode(
+                [
+                    'uint256',
+                    'uint256',
+                    'uint256',
+                    'uint256[]',
+                ],
+                [secondProfileId, Mock_Bounty, Mock_Submission, [secondProfileId]]
+            );
             await expect(
                 lensHub.post({
                     profileId: FIRST_PROFILE_ID,
@@ -279,7 +306,7 @@ makeSuiteCleanRoom('Simple Voting Module', function () {
             ).to.not.be.reverted;
 
             await expect(
-                simpleVoting.connect(userTwo).submitProject(secondProfileId, Mock_Bounty, Mock_Submission, [secondProfileId])
+                lensHub.connect(userTwo).collect(FIRST_PROFILE_ID, 1, data)
             ).to.not.be.reverted;
             await expect(await simpleVoting.state()).to.eq(0);
             await network.provider.send("evm_setNextBlockTimestamp", [2648152830]);

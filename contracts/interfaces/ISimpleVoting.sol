@@ -14,6 +14,7 @@ interface ISimpleVoting {
     error AlreadyCollected();
     error JudgeAlreadyCreated();
     error BountyAlreadyCreated();
+    error NoMirrors();
     enum HackState {
         SubmissionsActive,
         VotingActive,
@@ -46,12 +47,6 @@ interface ISimpleVoting {
         uint256[] submissions;
         uint256[] voters;
     }
-    function submitProject(
-        uint256 submitterId,
-        uint256 bountyId,
-        uint256 pubId,
-        uint256[] calldata teamMembersId
-    ) external;
     function castVote( uint256 bountyId, uint256 voterId, uint256 pubIdToVoteFor ) external;
     function claimPrize(uint bountyId, uint claimProfileId) external;
     function state() external view returns(HackState);

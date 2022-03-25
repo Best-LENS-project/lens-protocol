@@ -12,6 +12,7 @@ import {SafeERC20} from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {IERC721} from '@openzeppelin/contracts/token/ERC721/IERC721.sol';
 import "hardhat/console.sol";
 
+// Errors - Collecting acts as submissions
 contract SimpleVoting is ICollectModule, ModuleBase, ISimpleVoting {
     using SafeERC20 for IERC20;
     uint public startTime;
@@ -84,27 +85,26 @@ contract SimpleVoting is ICollectModule, ModuleBase, ISimpleVoting {
         }
         return _data;
     }
-    function submitProject(
-        uint256 submitterId,
-        uint256 bountyId,
-        uint256 pubId,
-        uint256[] calldata teamMembersId
-    ) public {
-        // Safeguard Params - HackState / isHacker / ProfileId Owner / TeamMember Length / PubId Not Submitted
-        if(state() != HackState.SubmissionsActive) revert NotAcceptingSubmissions();
-        if(isHacker[submitterId] != true) revert NotHacker();
-            address owner = IERC721(HUB).ownerOf(submitterId);
-        if (msg.sender != owner) revert Errors.NotProfileOwner();
-        if(teamMembersId.length > maxTeamSize) revert TeamTooLarge();
-        if(idToBounty[bountyId].pubIdToSubmission[pubId].hasSubmitted != false) revert ProjectAlreadySubmitted();
 
-        // Set Submission .env Variables
-        idToBounty[bountyId].pubIdToSubmission[pubId].hasSubmitted = true; 
-        idToBounty[bountyId].pubIdToSubmission[pubId].contentURI = ILensHub(HUB).getContentURI(submitterId, pubId);      
-        _assignTeamMembers(bountyId, pubId, teamMembersId);
-        
-        // Submit Project
-        idToBounty[bountyId].submissions.push(pubId);
+    /**
+     * @notice Processes a collect action for a given publication, this can only be called by the hub.
+     *
+     * @param referrerProfileId The LensHub profile token ID of the referrer's profile (only different in case of mirrors).
+     * @param collector The collector address.
+     * @param profileId The token ID of the profile associated with the publication being collected.
+     * @param pubId The LensHub publication ID associated with the publication being collected.
+     * @param data Arbitrary data __passed from the collector!__ to be decoded.
+     */
+    function processCollect(
+        uint256 referrerProfileId,
+        address collector,
+        uint256 profileId,
+        uint256 pubId,
+        bytes calldata data
+    ) external onlyHub override {
+        if (referrerProfileId != profileId) revert NoMirrors();
+        (uint256 collectorProfile, uint256 bountyId,uint256 pubIdData,uint256[] memory teamMembersId) = abi.decode(data, (uint256, uint256, uint256, uint256[]));
+        _submitProject(collector, collectorProfile, bountyId, pubIdData, teamMembersId);
     }
 
     function castVote(
@@ -226,29 +226,33 @@ contract SimpleVoting is ICollectModule, ModuleBase, ISimpleVoting {
         idToBounty[bountyId].token = token;
     } 
 
-    function _assignTeamMembers(uint bountyId, uint pubId, uint[] calldata teamMembersId) internal {
+    function _assignTeamMembers(uint bountyId, uint pubId, uint[] memory teamMembersId) internal {
         for (uint i; i < teamMembersId.length; i++) {
             if(isHacker[teamMembersId[i]] != true) revert NotHacker();
             idToBounty[bountyId].pubIdToSubmission[pubId].teamMembers.push(teamMembersId[i]);
         }
     }
-
-    /**
-     * @notice Processes a collect action for a given publication, this can only be called by the hub.
-     *
-     * @param referrerProfileId The LensHub profile token ID of the referrer's profile (only different in case of mirrors).
-     * @param collector The collector address.
-     * @param profileId The token ID of the profile associated with the publication being collected.
-     * @param pubId The LensHub publication ID associated with the publication being collected.
-     * @param data Arbitrary data __passed from the collector!__ to be decoded.
-     */
-    function processCollect(
-        uint256 referrerProfileId,
+    function _submitProject(
         address collector,
-        uint256 profileId,
+        uint256 submitterId,
+        uint256 bountyId,
         uint256 pubId,
-        bytes calldata data
-    ) external onlyHub override {
-        uint256 test = 100;
+        uint256[] memory teamMembersId
+    ) internal {
+        // Safeguard Params - HackState / isHacker / ProfileId Owner / TeamMember Length / PubId Not Submitted
+        if(state() != HackState.SubmissionsActive) revert NotAcceptingSubmissions();
+        if(isHacker[submitterId] != true) revert NotHacker();
+            address owner = IERC721(HUB).ownerOf(submitterId);
+        if (collector != owner) revert Errors.NotProfileOwner();
+        if(teamMembersId.length > maxTeamSize) revert TeamTooLarge();
+        if(idToBounty[bountyId].pubIdToSubmission[pubId].hasSubmitted != false) revert ProjectAlreadySubmitted();
+
+        // Set Submission .env Variables
+        idToBounty[bountyId].pubIdToSubmission[pubId].hasSubmitted = true; 
+        idToBounty[bountyId].pubIdToSubmission[pubId].contentURI = ILensHub(HUB).getContentURI(submitterId, pubId);      
+        _assignTeamMembers(bountyId, pubId, teamMembersId);
+        
+        // Submit Project
+        idToBounty[bountyId].submissions.push(pubId);
     }
 }
